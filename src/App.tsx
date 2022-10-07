@@ -7,6 +7,8 @@ import { Types, AptosClient } from 'aptos';
 const client = new AptosClient('https://fullnode.devnet.aptoslabs.com/v1');
 
 function App() {
+  const [find, setFind] = React.useState(false);
+  // const [, set] = React.useState<string | null>(null);
   /** Convert string to hex-encoded utf-8 bytes. */
   function stringToHex(text: string) {
     const encoder = new TextEncoder();
@@ -24,17 +26,67 @@ function App() {
   React.useEffect(() => {
     if (!address) return;
     client.getAccount(address).then(setAccount);
+    let sample = JSON.stringify(client.getAccount(address));
+    console.log(sample);
   }, [address]);
 
 
   // Check for the module; show publish instructions if not present.
   const [modules, setModules] = React.useState<Types.MoveModuleBytecode[]>([]);
+  console.log("modules", modules);
   React.useEffect(() => {
     if (!address) return;
     client.getAccountModules(address).then(setModules);
   }, [address]);
 
+  modules.map(async(r, i) => {
+    if (r.abi?.name === "message") {
+      console.log("ok");
+      // setFind(true);
+      const message = "Mars";
+      console.log(message);
+      const transaction = {
+        type: "entry_function_payload",
+        function: `${address}::message::set_message`,
+        arguments: [stringToHex(message)],
+        type_arguments: [],
+      };
+      console.log("trans", transaction);
+
+      try {
+        // setIsSaving(true);
+        await window.aptos.signAndSubmitTransaction(transaction);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    console.log("map", r.abi?.name);
+  });
+  const transfer = () => {
+    const message = "Mars";
+    console.log(message);
+    const transaction = {
+      type: "entry_function_payload",
+      function: `${address}::message::set_message`,
+      arguments: [stringToHex(message)],
+      type_arguments: [],
+    };
+    console.log("trans", transaction);
+    const example = window.aptos.signAndSubmitTransaction(transaction);
+    console.log("try", example);
+    try {
+      // setIsSaving(true);
+      console.log("befor try");
+      // const example = await window.aptos.signAndSubmitTransaction(transaction);
+      // console.log("try", example);
+    } catch (err) {
+      // setIsSaving(false);
+      console.log("catch", err);
+    }
+  }
+
   const hasModule = modules.some((m) => m.abi?.name === 'Message');
+  console.log("sample", hasModule);
   const publishInstructions = (
     <pre>
       Run this command to publish the module:
@@ -47,16 +99,18 @@ function App() {
   const ref = React.createRef<HTMLTextAreaElement>();
   const [isSaving, setIsSaving] = React.useState(false);
   const handleSubmit = async (e: any) => {
-    e.preventDefault();
+    // e.preventDefault();
     if (!ref.current) return;
 
     const message = ref.current.value;
+    console.log(message);
     const transaction = {
       type: "entry_function_payload",
-      function: `${address}::message::set_message`,
+      function: `0xab0adbde9f55f69f23ceb27198f179141ba681e81b1b507dd1a8e6f72e4e78a3::message::set_message`,
       arguments: [stringToHex(message)],
       type_arguments: [],
     };
+    console.log(transaction);
 
     try {
       setIsSaving(true);
@@ -99,6 +153,7 @@ function App() {
     }
   };
 
+
   return (
     <div className="App">
       <Card className="text-center">
@@ -111,12 +166,18 @@ function App() {
       <p><code>{address}</code></p>
       <p><code>{account?.authentication_key}</code></p>
       {/* {!hasModule && publishInstructions} */}
-      {hasModule ? (
+      {find ? (
         <form onSubmit={handleSubmit}>
           <textarea ref={ref} />
           <input disabled={isSaving} type="submit" />
         </form>
       ) : publishInstructions}
+      <Button onClick={() => handleSubmit("set_message")} variant="primary">
+        submit
+      </Button>
+      <Button onClick={() => transfer()} variant="primary">
+        trans
+      </Button>
       {/* {hasModule ? (
         <form onSubmit={handleSubmit}>
           <textarea ref={ref} defaultValue={message} readOnly={!isEditable} />
